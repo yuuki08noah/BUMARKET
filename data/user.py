@@ -20,6 +20,9 @@ def get_users():
     cur.execute("select * from users")
     return cur.fetchall()
 
+def get_user(user_id):
+    cur.execute("select * from users where user_id = %s", (user_id,))
+    return cur.fetchone()
 
 def get_user_id_by_username(username):
     cur.execute("select user_id from users where username = %s", (username,))

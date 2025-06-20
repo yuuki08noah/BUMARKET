@@ -35,6 +35,22 @@ def get_product(product_id):
     return row_to_model(data.get_product(product_id))
 
 def create_product(user_id: int, product: ProductRequest, imgs):
+    paths = create_images(imgs)
+    data.create_product(user_id, product, paths)
+
+
+def get_products_by_user_id(user_id):
+    return list(map(row_to_model, data.get_products_by_user_id(user_id)))
+
+def update_product(product_id, user_id, product, imgs):
+    urls = data.get_urls_by_product_id(product_id)
+    if urls:
+        delete_images(urls)
+
+    paths = create_images(imgs)
+    data.update_product(product_id, user_id, product, paths)
+
+def create_images(imgs):
     paths = []
     for img in imgs:
         global inc
@@ -49,9 +65,17 @@ def create_product(user_id: int, product: ProductRequest, imgs):
         with open(file_path, 'wb') as f:
             shutil.copyfileobj(img.file, f)
         paths.append(file_path)
+    return paths
 
-    data.create_product(user_id, product, paths)
+def delete_images(paths):
+    for path in paths:
+        if os.path.isfile(path[0]):
+            os.remove(path[0])
 
-
-def get_products_by_user_id(user_id):
-    return data.get_products_by_user_id(user_id)
+def delete_by_product_id(product_id):
+    urls = data.get_urls_by_product_id(product_id)
+    if urls:
+        delete_images(urls)
+    data.delete_product(product_id)
+    data.delete_images(product_id)
+    return True

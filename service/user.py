@@ -24,5 +24,8 @@ def row_to_model(user) -> UserResponse:
 def get_users():
     return list(map(row_to_model, data.get_users()))
 
+def get_user(user_id):
+    return row_to_model(data.get_user(user_id))
+
 def create_user(user: UserCreation):
     data.create_user(user)

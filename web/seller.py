@@ -1,6 +1,4 @@
 import json
-import os
-import shutil
 from typing import List
 
 import jwt
@@ -33,6 +31,23 @@ def create(request: Request, product: str = Form(...), img: List[UploadFile] = F
 
     service.create_product(user_id, product_model, img)
 
+
+@router.patch("/{product_id}")
+def create(request: Request, product_id: int, product: str = Form(...), img: List[UploadFile] = File(...)):
+    sent = request.cookies.get("token")
+    if not sent:
+        return JSONResponse({"error": "jwt required"}, status_code=401)
+    decoded = jwt.decode(sent, private_key, algorithms=["HS256"])
+    user_id = decoded.get("user_id")
+
+    try:
+        product_dict = json.loads(product)
+        product_model = ProductRequest(**product_dict)
+    except Exception as e:
+        return JSONResponse({"error": "Invalid product format", "details": str(e)}, status_code=400)
+
+    service.update_product(product_id, user_id, product_model, img)
+
 @router.get("/my")
 def my_products(request: Request):
     sent = request.cookies.get("token")
@@ -42,4 +57,14 @@ def my_products(request: Request):
     user_id = decoded.get("user_id")
 
     return service.get_products_by_user_id(user_id)
+
+@router.delete("/{product_id}")
+def delete(request: Request, product_id: int):
+    sent = request.cookies.get("token")
+    if not sent:
+        return JSONResponse({"error": "jwt required"}, status_code=401)
+    decoded = jwt.decode(sent, private_key, algorithms=["HS256"])
+    user_id = decoded.get("user_id")
+
+    return service.delete_by_product_id(product_id)
 
