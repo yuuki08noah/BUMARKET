@@ -6,32 +6,37 @@ from fastapi import APIRouter, Body
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import Response, JSONResponse
+
+import util
 from service import user as service
+from util import private_key
 
 from data import user as data
 
 from model.user import UserAuthentication
 
 router = APIRouter(prefix="", tags=["auth"])
-private_key = b"key"
+
+def create_token(username, user_id, admin):
+    now = int(time.time())
+    exp = now + 86400
+    payload = {
+        "username": username,
+        "user_id": user_id,
+        "iat": now,
+        "exp": exp,
+        "admin": admin
+    }
+    encoded_jwt = jwt.encode(payload, private_key, algorithm="HS256")
+
+    return encoded_jwt
 
 @router.post("/login")
 def login(response: Response, user_authentication: UserAuthentication = Body(...)):
     username = user_authentication.username
-
     if bcrypt.checkpw(user_authentication.password.encode(), data.get_password(username).encode()):
-        now = int(time.time())
-        exp = now + 86400
-        payload = {
-            "username": username,
-            "user_id":data.get_user_id_by_username(username),
-            "iat": now,
-            "exp": exp,
-            "admin": bool(data.is_admin(username))
-        }
-        encoded_jwt = jwt.encode(payload, private_key, algorithm="HS256")
-
-        response.set_cookie(key="token", value=encoded_jwt)
+        token = create_token(username, data.get_user_id_by_username(username), bool(data.is_admin(username)))
+        response.set_cookie(key="token", value=token)
         response.status_code = status.HTTP_200_OK
         response.body = b'successfully logged in'
         return response
@@ -46,10 +51,5 @@ def logout(response: Response):
 
 @router.get("/me")
 def me(request: Request):
-    sent = request.cookies.get("token")
-    if not sent:
-        return JSONResponse({"error": "jwt required"}, status_code=401)
-    decoded = jwt.decode(sent, private_key, algorithms=["HS256"])
-    user_id = decoded.get("user_id")
-
+    user_id = util.get_user_id(request)
     return service.get_user(user_id)

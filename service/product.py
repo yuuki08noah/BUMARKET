@@ -1,11 +1,11 @@
 import os
 import shutil
 
-from starlette.responses import JSONResponse
-
 from cache import no as redis
 from data import product as data
-from model.product import ProductResponse, ProductRequest
+from exception.product import ImageInvalidException
+from model.product import ProductResponse, ProductRequest, ProductDetailedResponse
+
 inc = 0
 
 def like(product_id: int, device_id: str):
@@ -30,14 +30,24 @@ def row_to_model(product) -> ProductResponse:
 def get_products():
     return list(map(row_to_model, data.get_products()))
 
-
 def get_product(product_id):
-    return row_to_model(data.get_product(product_id))
+    product = data.get_product(product_id)
+    images = data.get_urls_by_product_id(product_id)
+    like_count = data.get_like_count(product_id)
+    product_id, user_id, title, description, image_url, created_at = product
+    return ProductDetailedResponse(
+        product_id=product_id,
+        user_id=user_id,
+        title=title,
+        description=description,
+        created_at=created_at,
+        images=list(map(lambda x: x[0], images)),
+        like_count=like_count
+    )
 
 def create_product(user_id: int, product: ProductRequest, imgs):
     paths = create_images(imgs)
     data.create_product(user_id, product, paths)
-
 
 def get_products_by_user_id(user_id):
     return list(map(row_to_model, data.get_products_by_user_id(user_id)))
@@ -55,7 +65,7 @@ def create_images(imgs):
     for img in imgs:
         global inc
         if not img.content_type.startswith('image/'):
-            return JSONResponse({"error": "Invalid image type"}, status_code=404)
+            raise ImageInvalidException()
         name, ext = os.path.splitext(img.filename)
         save_filename = f'{name}_{inc}{ext}'
         inc += 1

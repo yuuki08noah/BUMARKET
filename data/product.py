@@ -59,3 +59,8 @@ def delete_product(product_id):
     query = f'delete from products where product_id={product_id}'
     cur.execute(query)
     con.commit()
+
+def get_like_count(product_id):
+    query = f'select count(*) from likes where product_id={product_id}'
+    cur.execute(query)
+    return cur.fetchone()[0]
